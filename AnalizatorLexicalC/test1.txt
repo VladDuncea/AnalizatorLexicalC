@@ -1,0 +1,13 @@
+void main()
+{
+	/* coment*
+	ariu */
+	int a,b,c;
+	"vlad are 10\ \"mere";
+
+	float x = 20.3, z = 2.3f;
+
+	c = a + b;
+	c++;
+	c += 20;
+}
