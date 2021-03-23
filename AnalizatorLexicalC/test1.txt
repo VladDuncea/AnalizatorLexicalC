@@ -5,6 +5,8 @@ void main()
 	int a,b,c;
 	"vlad are 10\ \"mere";
 
+	int x = 0x32, y = 0;
+
 	float x = 20.3, z = 2.3f;
 
 	c = a + b;

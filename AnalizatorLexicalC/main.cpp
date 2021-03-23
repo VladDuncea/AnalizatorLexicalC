@@ -11,6 +11,7 @@ enum TipToken
 	constantaIntreaga,
 	constantaFlotanta,
 	constantaString,
+	constantaHexa,
 	cuvantCheie,
 	identificator,
 	operatorr,
@@ -19,7 +20,8 @@ enum TipToken
 	eof,
 	eroareComentariu,
 	eroareConstantaString,
-	eroareFinalNeasteptat
+	eroareFinalNeasteptat,
+	eroareHexa
 };
 
 class Token
@@ -48,6 +50,9 @@ public:
 		case TipToken::constantaIntreaga:
 			tipToken = "Constanta Intreaga";
 			break;
+		case TipToken::constantaHexa:
+			tipToken = "Constanta Hexa";
+			break;
 		case TipToken::constantaString:
 			tipToken = "Constanta String";
 			break;
@@ -71,6 +76,9 @@ public:
 			break;
 		case TipToken::eroareFinalNeasteptat:
 			tipToken = "EROARE! Final fisier neasteptat!";
+			break;
+		case TipToken::eroareHexa:
+			tipToken = "EROARE! Valoare hexa eronata!";
 			break;
 		default:
 			tipToken = "Necunoscut";
@@ -175,6 +183,13 @@ public:
 				if (isDigit(c) && c != '0')
 				{
 					codStare = 3;
+					continue;
+				}
+
+				// Inceput cifra 0
+				if (c == '0')
+				{
+					codStare = 11;
 					continue;
 				}
 
@@ -432,6 +447,58 @@ public:
 				tipToken = TipToken::eroareComentariu;
 				break;
 			}
+			#pragma endregion
+
+			#pragma region Hexa/Octal
+
+			if (codStare == 11)
+			{
+				if (c == 'x' || c=='X')
+				{
+					tipToken = TipToken::constantaIntreaga;
+					codStare = 12;
+					continue;
+				}
+
+				//Blocaj, am gasit 0 const int
+				tipToken = TipToken::constantaIntreaga;
+				valoareAcumulata = valoareAcumulata.substr(0, valoareAcumulata.size() - 1);
+				fisier.unget();
+				caracterCurent--;
+				break;
+			}
+
+			if (codStare == 12)
+			{
+				string caractereHexaPrima = "123456789abcdefABCDEF";
+				if (caractereHexaPrima.find(c) != string::npos)
+				{
+					codStare = 13;
+					continue;
+				}
+
+				// Eroare
+				eroare = true;
+				tipToken = TipToken::eroareComentariu;
+				break;
+			}
+
+			if (codStare == 13)
+			{
+				string caractereHexa = "0123456789abcdefABCDEF";
+				if (caractereHexa.find(c) != string::npos)
+				{
+					continue;
+				}
+
+				// Blocaj
+				tipToken = TipToken::constantaHexa;
+				valoareAcumulata = valoareAcumulata.substr(0, valoareAcumulata.size() - 1);
+				fisier.unget();
+				caracterCurent--;
+				break;
+			}
+
 			#pragma endregion
 		}
 		
