@@ -11,6 +11,7 @@ enum TipToken
 	constantaIntreaga,
 	constantaFlotanta,
 	constantaString,
+	constantaCaracter,
 	constantaHexa,
 	cuvantCheie,
 	identificator,
@@ -20,6 +21,7 @@ enum TipToken
 	eof,
 	eroareComentariu,
 	eroareConstantaString,
+	eroareConstantaCaracter,
 	eroareFinalNeasteptat,
 	eroareHexa
 };
@@ -56,6 +58,9 @@ public:
 		case TipToken::constantaString:
 			tipToken = "Constanta String";
 			break;
+		case TipToken::constantaCaracter:
+			tipToken = "Constanta Caracter";
+			break;
 		case TipToken::cuvantCheie:
 			tipToken = "Cuvant cheie";
 			break;
@@ -74,6 +79,9 @@ public:
 		case TipToken::eroareConstantaString:
 			tipToken = "EROARE! String formatat incorect";
 			break;
+		case TipToken::eroareConstantaCaracter:
+			tipToken = "EROARE! Constanta caracter formatata incorect";
+			break;
 		case TipToken::eroareFinalNeasteptat:
 			tipToken = "EROARE! Final fisier neasteptat!";
 			break;
@@ -89,7 +97,7 @@ public:
 
 	bool eEroare()
 	{
-		return (tipToken == TipToken::eroareComentariu || tipToken == TipToken::eroareConstantaString || tipToken == TipToken::eroareFinalNeasteptat);
+		return (tipToken == TipToken::eroareComentariu || tipToken == TipToken::eroareConstantaString || tipToken == TipToken::eroareFinalNeasteptat || tipToken == TipToken::eroareHexa);
 	}
 };
 
@@ -179,6 +187,14 @@ public:
 					continue;
 				}
 
+				// Char literal
+				if (c == '\'')
+				{
+					tipToken = TipToken::constantaCaracter;
+					codStare = 14;
+					continue;
+				}
+
 				// Inceput constanta intreaga/flotanta
 				if (isDigit(c) && c != '0')
 				{
@@ -226,10 +242,10 @@ public:
 
 			if (codStare == 1)
 			{
+				tipToken = TipToken::constantaString;
 				// Verificam aparitie "
 				if (c == '"')
 				{
-					tipToken = TipToken::constantaString;
 					// Ne oprim pt ca starea urmatoare nu are tranzitii
 					break;
 				}
@@ -242,21 +258,21 @@ public:
 				}
 
 				// Verificare caractere
-				if (isCharacter(c) || c == ' ' || isDigit(c))
+				if (isCharacter(c) || c == ' ' || c == '\t' || isDigit(c))
 				{
 					continue;
 				}
 
 				// Eroare
 				eroare = true;
-				tipToken = TipToken::constantaString;
+				tipToken = TipToken::eroareConstantaString;
 				break;
 			}
 
 			if (codStare == 2)
 			{
 				// Verificam caractere
-				if (isCharacter(c) || c == ' ' || isDigit(c))
+				if (isCharacter(c) || isWhitespace(c) || isDigit(c) )
 				{
 					codStare = 1;
 					continue;
@@ -264,7 +280,7 @@ public:
 
 				// Eroare
 				eroare = true;
-				tipToken = TipToken::constantaString;
+				tipToken = TipToken::eroareConstantaString;
 				break;
 			}
 
@@ -279,6 +295,12 @@ public:
 				{
 					// Mergem in starea pt flotant
 					codStare = 4;
+					continue;
+				}
+
+				if (c == 'e')
+				{
+					codStare = 8;
 					continue;
 				}
 
@@ -305,6 +327,12 @@ public:
 					continue;
 				}
 
+				if (c == 'e')
+				{
+					codStare = 8;
+					continue;
+				}
+
 				//Am atins finalul
 				if (c != 'f')
 				{
@@ -313,6 +341,21 @@ public:
 					valoareAcumulata = valoareAcumulata.substr(0, valoareAcumulata.size() - 1);
 				}
 				break;
+			}
+
+			if (codStare == 8)
+			{
+				// Starea de dupa e, putem sa avem cifra sau -
+				if (c == '-' || (isDigit(c) && c != '0'))
+				{
+					codStare = 4;
+					continue;
+				}
+
+				// S-a terminat
+				fisier.unget();
+				caracterCurent--;
+				valoareAcumulata = valoareAcumulata.substr(0, valoareAcumulata.size() - 1);
 			}
 
 			#pragma endregion
@@ -424,9 +467,13 @@ public:
 				// Daca avem / s-a terminat, altfel inapoi
 				if (c == '/')
 				{
-					tipToken = TipToken::comentariu;
+					//tipToken = TipToken::comentariu;
 					// Putem opri fortat parcurgerea pentru ca starea urmatoare nu are tranzitii
-					break;
+
+					// Resetam automatul pt ca comentariile se ignora
+					valoareAcumulata = "";
+					codStare = 0;
+					continue;
 				}
 
 				// Daca avem * ramanem pe loc
@@ -500,6 +547,39 @@ public:
 			}
 
 			#pragma endregion
+
+			#pragma region Char literal
+
+			if (codStare == 14)
+			{
+				if (isCharacter(c) || c == ' ')
+				{
+					codStare = 15;
+					continue;
+				}
+
+				// Eroare
+				eroare = true;
+				tipToken = TipToken::eroareConstantaCaracter;
+				break;
+			}
+
+			if (codStare == 15)
+			{
+				if (c == '\'')
+				{
+					// Final constanta char
+					break;
+				}
+
+				// Eroare
+				eroare = true;
+				tipToken = TipToken::eroareConstantaCaracter;
+				break;
+			}
+
+			#pragma endregion
+
 		}
 		
 		if (fisier.eof())
@@ -591,7 +671,7 @@ private:
 
 	bool isCharacter(char c)
 	{
-		string caractere = "abcdefghijqlmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#%&'()*+,-./:;<=>?[\\]^_{|}~0123456789";
+		string caractere = "abcdefghijkqlmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#%&'()*+,-./:;<=>?[\\]^_{|}~0123456789";
 
 		return caractere.find(c) != string::npos;
 	}
@@ -603,7 +683,7 @@ private:
 
 	bool isSeparator(char c)
 	{
-		string separatori = "{},();";
+		string separatori = "{},[]();";
 
 		return separatori.find(c) != string::npos;
 	}

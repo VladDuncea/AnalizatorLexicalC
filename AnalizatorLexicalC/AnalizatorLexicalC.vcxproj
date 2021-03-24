@@ -142,6 +142,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="dragulici.txt" />
     <Text Include="test1.txt" />
   </ItemGroup>
   <ItemGroup>
